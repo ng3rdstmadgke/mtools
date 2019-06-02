@@ -10,6 +10,7 @@ use std::io::prelude::*;
 use std::io::BufWriter;
 use std::io::BufReader;
 use std::fs::File;
+use std::process;
 
 fn main() {
     let options = parse_args(env::args());
@@ -73,6 +74,8 @@ fn parse_args(mut args: Args) -> HashMap<String, String> {
                 key = Some(arg);
             } else if arg == "--no-header" {
                 options.insert("--no-header".to_string(), arg);
+            } else if arg == "-h" {
+                usage();
             } else if options.get("file") == None {
                 options.insert("file".to_string(), arg);
             } else {
@@ -83,3 +86,27 @@ fn parse_args(mut args: Args) -> HashMap<String, String> {
     options
 }
 
+fn usage() {
+    let usage = r#"
+    [ usage ]
+    mcut [ options ] [FILE]
+
+    [ options ]
+        -f: 出力するカラムを0から始まる数字で指定する(カンマ区切り)
+            「カラム番号:任意の文字列」を指定すると指定したカラムに固定値を出力できる
+            例) -f 0,3,:foo
+
+        -F: 1行目をヘッダとみなし、出力するカラムをカラム名で指定する(カンマ区切り)
+            「カラム名:任意の文字列」を指定すると指定したカラムに固定値を出力できる
+            例) -F title,id,narrow1:foo
+
+        -d: デリミタ(デフォルト値はタブ)
+
+        --no-header: -F 利用時にヘッダを出力しない
+
+    [ example ]
+        cat sample.tsv | mcut -d , -F title,id,number1:0,narrow1: --no-header
+    "#;
+    eprintln!("{}", usage);
+    process::exit(1);
+}
