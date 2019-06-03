@@ -69,7 +69,13 @@ pub fn ecut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
             if let Some(ref default) = cfg.default_map[i] {
                 row.push_str(default);
             } else {
-                row.push_str(cols[cfg.field_map[i]]); } row.push(cfg.delimiter); } row.pop(); row.push('\n'); writer.write(row.as_bytes()).unwrap();
+                row.push_str(cols[cfg.field_map[i]]);
+            }
+            row.push(cfg.delimiter);
+        }
+        row.pop();
+        row.push('\n');
+        writer.write(row.as_bytes()).unwrap();
         row.clear();
     }
 }
