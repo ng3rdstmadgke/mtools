@@ -54,11 +54,11 @@ pub fn get_field_map_2(header: &str, delimiter: char, field: String) -> (Vec<usi
 pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: Config) {
     let max: usize = *cfg.field_map.iter().max().unwrap();
     let mut row: String = String::new();
-    for result in reader.lines() {
-        let line = result.ok().unwrap();
+    let mut buf = String::new();
+    while reader.read_line(&mut buf).ok().unwrap() > 0 {
         // 必要なところまで読み込む
         let mut cols: Vec<&str> = Vec::with_capacity(max);
-        for (i, col) in line.split(cfg.delimiter).enumerate() {
+        for (i, col) in buf.split(cfg.delimiter).enumerate() {
             if i > max {
                 break;
             }
@@ -77,6 +77,7 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
         row.push('\n');
         writer.write(row.as_bytes()).unwrap();
         row.clear();
+        buf.clear();
     }
 }
 
