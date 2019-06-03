@@ -36,7 +36,7 @@ fn main() {
             // ヘッダなし
             let (field_map, default_map) = mcut::get_field_map_1(f.clone());
             let cfg = mcut::Config::new(delimiter, field_map, default_map);
-            mcut::ecut(&mut reader, &mut writer, cfg);
+            mcut::mcut(&mut reader, &mut writer, cfg);
         }
         (None, Some(f)) => {
             // ヘッダあり
@@ -50,7 +50,7 @@ fn main() {
                 let header = format!("{}\n", util::join(delimiter, &header));
                 writer.write(header.as_bytes()).ok();
             }
-            mcut::ecut(&mut reader, &mut writer, cfg);
+            mcut::mcut(&mut reader, &mut writer, cfg);
         }
         (_, _) => panic!("-f, -F どちらか一方を指定してください。"),
     };

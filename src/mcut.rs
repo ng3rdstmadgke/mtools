@@ -51,7 +51,7 @@ pub fn get_field_map_2(header: &str, delimiter: char, field: String) -> (Vec<usi
     (field_map, default_map)
 }
 
-pub fn ecut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: Config) {
+pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: Config) {
     let max: usize = *cfg.field_map.iter().max().unwrap();
     let mut row: String = String::new();
     for result in reader.lines() {

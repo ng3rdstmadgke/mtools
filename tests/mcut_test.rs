@@ -16,7 +16,7 @@ fn main() {
     let line = (&mut reader).lines().next().unwrap().ok().unwrap();
     let (field_map, default_map) = mcut::get_field_map_2(&line, delimiter, field);
     let cfg = mcut::Config::new(delimiter, field_map, default_map);
-    mcut::ecut(&mut reader, &mut writer, cfg);
+    mcut::mcut(&mut reader, &mut writer, cfg);
     assert_eq!(&read_all("tests/mcut_test/expected.tsv"), writer.get_ref());
 }
 
