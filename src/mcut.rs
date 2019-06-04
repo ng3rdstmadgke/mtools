@@ -38,7 +38,7 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
     let max: usize = *cfg.field_map.iter().map(|(i, _)|i).max().unwrap();
     let mut buf: Vec<u8> = Vec::new();
     let mut split: Vec<usize> = vec![0; max + 2];
-    while reader.read_until(b'\n', &mut buf).ok().unwrap() > 0 { // 10u8 = \n
+    while reader.read_until(b'\n', &mut buf).ok().unwrap() > 0 {
         // 必要なところまで読み込む
         let mut cols_idx = 1;
         for (i, &byte) in buf.iter().enumerate() {
@@ -55,7 +55,7 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
             (_, Some(ref default)) => {
                 writer.write(default.as_bytes()).unwrap();
             },
-            (col_idx, None)            => {
+            (col_idx, None) => {
                 let start = split[col_idx] + 1;
                 let end   = split[col_idx + 1];
                 writer.write(&buf[start..end]).unwrap();
@@ -67,7 +67,7 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
                     writer.write(&[cfg.delimiter]).unwrap();
                     writer.write(default.as_bytes()).unwrap();
                 },
-                &(col_idx, None)            => {
+                &(col_idx, None) => {
                     let start = split[col_idx];
                     let end   = split[col_idx + 1];
                     writer.write(&buf[start..end]).unwrap();
