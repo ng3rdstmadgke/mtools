@@ -21,33 +21,33 @@ fn main() {
     };
     let mut writer = BufWriter::new(io::stdout());
 
-    let delimiter: char = if let Some(d) = options.get("-d") {
-        let chars: Vec<char> = d.chars().collect();
-        if chars.len() > 1 {
-            panic!("-d に指定できる文字は1文字です: {}", d);
+    let delimiter: u8 = if let Some(d) = options.get("-d") {
+        let bytes: &[u8] = d.as_bytes();
+        if bytes.len() > 1 {
+            panic!("-d に指定できる文字はシングルバイト文字1文字のみです: {}", d);
         }
-        chars[0]
+        bytes[0]
     } else {
-        '\t'
+        b'\t'
     };
 
     match (options.get("-f"), options.get("-F")) {
         (Some(f), None) => {
             // ヘッダなし
-            let (field_map, default_map) = mcut::get_field_map_1(f.clone());
-            let cfg = mcut::Config::new(delimiter, field_map, default_map);
+            let field_map = mcut::get_field_map_1(f.clone());
+            let cfg = mcut::Config::new(delimiter, field_map);
             mcut::mcut(&mut reader, &mut writer, cfg);
         }
         (None, Some(f)) => {
             // ヘッダあり
             let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-            let (field_map, default_map) = mcut::get_field_map_2(&line, delimiter, f.clone());
-            let cfg = mcut::Config::new(delimiter, field_map, default_map);
+            let field_map = mcut::get_field_map_2(&line, delimiter, f.clone());
+            let cfg = mcut::Config::new(delimiter, field_map);
             if options.get("--no-header").is_none() {
                 let header: Vec<&str> = f.split(',')
                     .map(|e| e.splitn(2, ':').next().unwrap())
                     .collect();
-                let header = format!("{}\n", util::join(delimiter, &header));
+                let header = format!("{}\n", util::join(char::from(delimiter), &header));
                 writer.write(header.as_bytes()).ok();
             }
             mcut::mcut(&mut reader, &mut writer, cfg);
