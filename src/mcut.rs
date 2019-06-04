@@ -1,3 +1,5 @@
+extern crate memchr;
+
 use std::io::prelude::*;
 use std::io::BufReader;
 
@@ -36,21 +38,19 @@ pub fn get_field_map_2(header: &str, delimiter: u8, field: String) -> Vec<(usize
 
 pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: Config) {
     let max: usize = *cfg.field_map.iter().map(|(i, _)|i).max().unwrap();
+    // 読み込んだ文字列を格納する配列
     let mut buf: Vec<u8> = Vec::new();
+    // 区切り文字のindexを格納する配列
     let mut split: Vec<usize> = vec![0; max + 2];
     while reader.read_until(b'\n', &mut buf).ok().unwrap() > 0 {
         // 必要なところまで読み込む
-        let mut cols_idx = 1;
-        for (i, &byte) in buf.iter().enumerate() {
-            if byte == cfg.delimiter {
-                split[cols_idx] = i;
-                cols_idx += 1;
-                if cols_idx >= split.len() {
-                    break;
-                }
+        for (i, position) in memchr::memchr_iter(cfg.delimiter, &buf).enumerate() {
+            if i <= max {
+                split[i + 1] = position;
             }
         }
 
+        // 書き込み処理
         match cfg.field_map[0] {
             (_, Some(ref default)) => {
                 writer.write(default.as_bytes()).unwrap();

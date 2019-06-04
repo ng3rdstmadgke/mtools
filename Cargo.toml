@@ -5,3 +5,4 @@ authors = ["ng3rdstmadgke <ng3rdstmagke@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+memchr = "2.2.0"
