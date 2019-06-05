@@ -47,6 +47,8 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
         for (i, position) in memchr::memchr_iter(cfg.delimiter, &buf).enumerate() {
             if i <= max {
                 split[i + 1] = position;
+            } else {
+                break;
             }
         }
 
