@@ -40,17 +40,24 @@ fn main() {
         }
         (None, Some(f)) => {
             // ヘッダあり
-            let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-            let field_map = mcut::get_field_map_2(&line, delimiter, f.clone());
-            let cfg = mcut::Config::new(delimiter, field_map);
-            if options.get("--no-header").is_none() {
-                let header: Vec<&str> = f.split(',')
-                    .map(|e| e.splitn(2, ':').next().unwrap())
-                    .collect();
-                let header = format!("{}\n", util::join(char::from(delimiter), &header));
-                writer.write(header.as_bytes()).ok();
+            let line = (&mut reader).lines().next();
+            match line {
+                Some(Ok(line)) => {
+                    let field_map = mcut::get_field_map_2(&line, delimiter, f.clone());
+                    let cfg = mcut::Config::new(delimiter, field_map);
+                    if options.get("--no-header").is_none() {
+                        let header: Vec<&str> = f.split(',')
+                            .map(|e| e.splitn(2, ':').next().unwrap())
+                            .collect();
+                        let header = format!("{}\n", util::join(char::from(delimiter), &header));
+                        writer.write(header.as_bytes()).ok();
+                    }
+                    mcut::mcut(&mut reader, &mut writer, cfg);
+                }
+                _ => {
+                    std::process::exit(0);
+                }
             }
-            mcut::mcut(&mut reader, &mut writer, cfg);
         }
         (_, _) => panic!("-f, -F どちらか一方を指定してください。"),
     };
