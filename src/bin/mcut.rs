@@ -24,7 +24,8 @@ fn main() {
     let delimiter: u8 = if let Some(d) = options.get("-d") {
         let bytes: &[u8] = d.as_bytes();
         if bytes.len() > 1 {
-            panic!("-d に指定できる文字はシングルバイト文字1文字のみです: {}", d);
+            eprintln!("-d に指定できる文字はシングルバイト文字1文字のみです: {}", d);
+            process::exit(1);
         }
         bytes[0]
     } else {
@@ -59,7 +60,10 @@ fn main() {
                 }
             }
         }
-        (_, _) => panic!("-f, -F どちらか一方を指定してください。"),
+        (_, _) => {
+            eprintln!("-f と -F 少なくともどちらか一方を指定してください。");
+            process::exit(1);
+        }
     };
 
 }
@@ -73,7 +77,9 @@ fn parse_args(mut args: Args) -> HashMap<String, String> {
             options.insert(k.clone(), arg);
             key = None;
         } else {
-            if arg == "-f" {
+            if arg == "-h" || arg == "--help" {
+                help();
+            } else if arg == "-f" {
                 key = Some(arg);
             } else if arg == "-F" {
                 key = Some(arg);
@@ -81,39 +87,18 @@ fn parse_args(mut args: Args) -> HashMap<String, String> {
                 key = Some(arg);
             } else if arg == "--no-header" {
                 options.insert("--no-header".to_string(), arg);
-            } else if arg == "-h" {
-                usage();
             } else if options.get("file") == None {
                 options.insert("file".to_string(), arg);
             } else {
-                panic!("不明なオプション: {}", arg);
+                eprintln!("不明なオプション: {}", arg);
+                process::exit(1);
             }
         }
     }
     options
 }
 
-fn usage() {
-    let usage = r#"
-    [ usage ]
-    mcut [ options ] [FILE]
-
-    [ options ]
-        -f: 出力するカラムを0から始まる数字で指定する(カンマ区切り)
-            「カラム番号:任意の文字列」を指定すると指定したカラムに固定値を出力できる
-            例) -f 0,3,:foo
-
-        -F: 1行目をヘッダとみなし、出力するカラムをカラム名で指定する(カンマ区切り)
-            「カラム名:任意の文字列」を指定すると指定したカラムに固定値を出力できる
-            例) -F title,id,narrow1:foo
-
-        -d: デリミタ(デフォルト値はタブ)
-
-        --no-header: -F 利用時にヘッダを出力しない
-
-    [ example ]
-        cat sample.tsv | mcut -d , -F title,id,number1:0,narrow1: --no-header
-    "#;
-    eprintln!("{}", usage);
+fn help() {
+    eprintln!("{}", include_str!("../resources/mcut.txt"));
     process::exit(1);
 }
