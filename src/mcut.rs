@@ -139,7 +139,11 @@ pub fn mcut<R: Read, W: Write>(reader: &mut BufReader<R>, writer: &mut W, cfg: C
     while reader.read_until(b'\n', &mut buf).ok().unwrap() > 0 {
         // 改行を区切り文字に置換
         let buf_last = buf.len() - 1;
-        buf[buf_last] = cfg.delimiter;
+        if buf[buf_last] == b'\n' {
+            buf[buf_last] = cfg.delimiter;
+        } else {
+            buf.push(cfg.delimiter);
+        }
 
         // 必要なところまで読み込む
         for (i, position) in memchr::memchr_iter(cfg.delimiter, &buf).enumerate() {
