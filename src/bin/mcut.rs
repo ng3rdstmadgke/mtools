@@ -1,6 +1,5 @@
 extern crate mtools;
 
-use mtools::util;
 use mtools::mcut;
 use std::env;
 use std::env::Args;
@@ -32,40 +31,31 @@ fn main() {
         b'\t'
     };
 
-    match (options.get("-f"), options.get("-F")) {
-        (Some(f), None) => {
-            // ヘッダなし
-            let field_map = mcut::get_field_map_1(f.clone());
-            let cfg = mcut::Config::new(delimiter, field_map);
+    if let Some(Ok(line)) = (&mut reader).lines().next() {
+        // カラム名とindexの対応表を作成
+        if let Some(fields) = options.get("-f") {
+            // -f オプション: ヘッダを考慮しない
+            let fmap = mcut::fmap_from_col_number(&line, delimiter, fields.clone());
+            let cfg = mcut::Config::new(delimiter, fmap);
+            // 1行目を出力する
+            mcut::mcut_line(line.as_bytes(), &mut writer, &cfg);
             mcut::mcut(&mut reader, &mut writer, cfg);
-        }
-        (None, Some(f)) => {
-            // ヘッダあり
-            let line = (&mut reader).lines().next();
-            match line {
-                Some(Ok(line)) => {
-                    let field_map = mcut::get_field_map_2(&line, delimiter, f.clone());
-                    let cfg = mcut::Config::new(delimiter, field_map);
-                    if options.get("--no-header").is_none() {
-                        let header: Vec<&str> = f.split(',')
-                            .map(|e| e.splitn(2, ':').next().unwrap())
-                            .collect();
-                        let header = format!("{}\n", util::join(char::from(delimiter), &header));
-                        writer.write(header.as_bytes()).ok();
-                    }
-                    mcut::mcut(&mut reader, &mut writer, cfg);
-                }
-                _ => {
-                    std::process::exit(0);
-                }
+        } else if let Some(fields) = options.get("-F") {
+            // -F オプション: ヘッダを考慮する
+            let fmap = mcut::fmap_from_col_name(&line, delimiter, fields.clone());
+            let cfg = mcut::Config::new(delimiter, fmap);
+            if let None = options.get("--no-header") {
+                // --no-headerオプションが指定されていなければ1行目を出力する
+                mcut::write_header(&mut writer, &cfg);
             }
-        }
-        (_, _) => {
-            eprintln!("-f と -F 少なくともどちらか一方を指定してください。");
+            mcut::mcut(&mut reader, &mut writer, cfg);
+        } else {
+            eprintln!("-f と -f 少なくともどちらか一方を指定してください。");
             process::exit(1);
-        }
+        };
+    } else {
+        std::process::exit(0);
     };
-
 }
 
 fn parse_args(mut args: Args) -> HashMap<String, String> {
