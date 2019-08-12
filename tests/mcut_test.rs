@@ -14,8 +14,7 @@ fn test_mcut_1() {
     let field = String::from("kana,title,field:word,src:0,narrow1:-");
     let delimiter = b',';
     let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-    let field_map = mcut::fmap_from_col_name(&line, delimiter, field);
-    let cfg = mcut::Config::new(delimiter, field_map);
+    let cfg = mcut::Config::parse_field_as_name(line.clone(), delimiter, field);
     mcut::mcut(&mut reader, &mut writer, cfg);
     let actual: String = String::from_utf8(writer.get_ref().to_vec()).unwrap();
     assert_eq!(read_all("tests/mcut_test/expected.csv"), actual);
@@ -28,9 +27,8 @@ fn test_mcut_2() {
     let field = String::from("id,title,narrow1,field:,kana");
     let delimiter = b',';
     let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-    let field_map = mcut::fmap_from_col_name(&line, delimiter, field.clone());
-    let cfg = mcut::Config::new(delimiter, field_map);
-    mcut::write_header(&mut writer, &cfg);
+    let cfg = mcut::Config::parse_field_as_name(line.clone(), delimiter, field);
+    cfg.write_header(&mut writer);
     mcut::mcut(&mut reader, &mut writer, cfg);
     let actual: String = String::from_utf8(writer.get_ref().to_vec()).unwrap();
     assert_eq!(read_all("tests/mcut_test/expected_2.csv"), actual);
@@ -43,9 +41,8 @@ fn test_mcut_3() {
     let field = String::from("3,:foo,1,0");
     let delimiter = b',';
     let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-    let field_map = mcut::fmap_from_col_number(&line, delimiter, field);
-    let cfg = mcut::Config::new(delimiter, field_map);
-    mcut::mcut_line(line.as_bytes(), &mut writer, &cfg);
+    let cfg = mcut::Config::parse_field_as_number(line.clone(), delimiter, field);
+    cfg.write_first_line(&mut writer);
     mcut::mcut(&mut reader, &mut writer, cfg);
     let actual: String = String::from_utf8(writer.get_ref().to_vec()).unwrap();
     assert_eq!(read_all("tests/mcut_test/expected_3.csv"), actual);
@@ -58,9 +55,8 @@ fn test_mcut_4() {
     let field = String::from("3,:foo,1,kana,0,piyo:sample,narrow1");
     let delimiter = b',';
     let line = (&mut reader).lines().next().unwrap().ok().unwrap();
-    let field_map = mcut::fmap_from_col_name(&line, delimiter, field.clone());
-    let cfg = mcut::Config::new(delimiter, field_map);
-    mcut::write_header(&mut writer, &cfg);
+    let cfg = mcut::Config::parse_field_as_name(line.clone(), delimiter, field);
+    cfg.write_header(&mut writer);
     mcut::mcut(&mut reader, &mut writer, cfg);
     let actual: String = String::from_utf8(writer.get_ref().to_vec()).unwrap();
     assert_eq!(read_all("tests/mcut_test/expected_4.csv"), actual);
