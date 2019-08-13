@@ -3,9 +3,6 @@ extern crate memchr;
 use std::io::prelude::*;
 use std::io::BufReader;
 
-
-
-
 /// readerから読み取った文字列をcfgの設定に従ってcutする
 ///
 /// # Arguments
@@ -79,15 +76,91 @@ impl Config {
         Config { first_line, delimiter, field, columns }
     }
 
+    fn col_to_idx(col_name: &str, header: &[&str]) -> usize {
+        if let Some(idx) = col_name.trim().parse::<usize>().ok() { // カラム番号が指定されている場合
+            if idx < header.len() {
+                return idx;
+            }
+        }
+        if let Some(idx) = header.iter().position(|e| e == &col_name) {
+            return idx;
+        }
+        panic!("不明なフィールド: {}", col_name);
+    }
+
+    fn number_to_idx(col_name: &str, header: &[&str]) -> usize {
+        if let Some(idx) = col_name.trim().parse::<usize>().ok() {
+            if idx < header.len() {
+                return idx;
+            }
+        }
+        panic!("不明なフィールド: {}", col_name);
+    }
+
+    fn parse_field(field: &str) -> (Option<&str>, Option<&str>, Option<Vec<u8>>) {
+        let v1: Vec<&str> = field.splitn(2, ':').collect();
+        let s1: &[&str] = &v1;
+        match s1 {
+            &[col] => {
+                let v2: Vec<&str> = col.splitn(2, "..").collect();
+                let s2: &[&str] = &v2;
+                match s2 {
+                    &[start]      => return (Some(start), None, None),
+                    &[start, end] => return (Some(start), Some(end), None),
+                    _             => panic!("不明なフィールド: {}", field),
+                }
+            }
+            &[col, default] => {
+                let v2: Vec<&str> = col.splitn(2, "..").collect();
+                let s2: &[&str] = &v2;
+                match s2 {
+                    &[start]      => return (Some(start), None, Some(default.as_bytes().to_vec())),
+                    &[start, end] => return (Some(start), Some(end), Some(default.as_bytes().to_vec())),
+                    _             => panic!("不明なフィールド: {}", field),
+                }
+            }
+            _ => {
+                panic!("不明なフィールド: {}", field);
+            }
+        }
+    }
+
     /// -f オプションをパースする
     ///
     /// # Arguments
     /// * `first_line` - ファイルの1行目
     /// * `delimiter`  - 区切り文字
-    /// * `field`      - -fオプションで指定した出力対象フィールド
-    pub fn parse_field_as_number(first_line: String, delimiter: u8, field: String) -> Self {
+    /// * `fields`      - -fオプションで指定した出力対象フィールド
+    pub fn parse_field_as_number(first_line: String, delimiter: u8, fields: String) -> Self {
         let cols: Vec<&str> = first_line.split(char::from(delimiter)).collect();
-        let columns: Vec<Column> = field.split(',')
+        let mut columns: Vec<Column> = Vec::new();
+        for field in fields.split(',') {
+            match Self::parse_field(field) {
+                (Some(start), None, None) => { // 範囲指定なし, デフォルト値なし
+                    let idx = Self::number_to_idx(start, &cols);
+                    columns.push(Column::new(idx, None, cols[idx].as_bytes().to_vec()));
+                }
+                (Some(start), None, Some(default)) => { // 範囲指定なし, デフォルト値あり
+                    columns.push(Column::new(0, Some(default), start.as_bytes().to_vec()));
+                }
+                (Some(start), Some(end), None) => { // 範囲指定あり, デフォルト値なし
+                    let start = Self::number_to_idx(start, &cols);
+                    let end   = Self::number_to_idx(end, &cols);
+                    for idx in start..(end + 1) {
+                        columns.push(Column::new(idx, None, cols[idx].as_bytes().to_vec()));
+                    }
+                }
+                (Some(start), Some(end), default) => { // 範囲指定あり, デフォルト値あり
+                    let start = Self::number_to_idx(start, &cols);
+                    let end   = Self::number_to_idx(end, &cols);
+                    for idx in start..(end + 1) {
+                        columns.push(Column::new(0, default.clone(), cols[idx].as_bytes().to_vec()));
+                    }
+                }
+                (_,_,_) => panic!("不正な形式のフィールドです: {}", field)
+            }
+        }
+        let columns: Vec<Column> = fields.split(',')
             .map(|e| {
                 let split: Vec<&str> = e.splitn(2, ':').collect();
                 if split.len() == 2 {
@@ -103,7 +176,7 @@ impl Config {
                 }
                 panic!("不明なフィールド: {}", e);
             }).collect();
-        Config::new(first_line, delimiter, field, columns)
+        Config::new(first_line, delimiter, fields, columns)
     }
 
     /// -F オプションをパースする
@@ -111,38 +184,37 @@ impl Config {
     /// # Arguments
     /// * `first_line`    - ファイルの1行目のヘッダ文字列
     /// * `delimiter` - 区切り文字
-    /// * `field`     - -Fオプションで指定した出力対象フィールド
-    pub fn parse_field_as_name(first_line: String, delimiter: u8, field: String) -> Self {
+    /// * `fields`     - -Fオプションで指定した出力対象フィールド
+    pub fn parse_field_as_name(first_line: String, delimiter: u8, fields: String) -> Self {
         let cols: Vec<&str> = first_line.split(char::from(delimiter)).collect();
-        let columns: Vec<Column> = field.split(',')
-            .map(|e| {
-                let split: Vec<&str> = e.splitn(2, ':').collect();
-                if split.len() == 2 {
-                    // デフォルト値が存在する場合
-                    if let Some(idx) = e.trim().parse::<usize>().ok() { // カラム番号が指定されている場合
-                        if idx < cols.len() {
-                            return Column::new(idx, Some(split[1].as_bytes().to_vec()), cols[idx].as_bytes().to_vec());
-                        }
-                    } else { // カラム名が指定されている場合
-                        // デフォルト値が存在してかつカラム名が指定されている場合はidxにusizeのmax値を格納する
-                        let idx = cols.iter().position(|c| c == &split[0]).unwrap_or(0);
-                        return Column::new(idx, Some(split[1].as_bytes().to_vec()), split[0].as_bytes().to_vec());
-                    }
-                }  else if split.len() == 1 {
-                    // デフォルト値が存在しない場合
-                    if let Some(idx) = e.trim().parse::<usize>().ok() { // カラム番号が指定されている場合
-                        if idx < cols.len() {
-                            return Column::new(idx, None, cols[idx].as_bytes().to_vec());
-                        }
-                    } else { // カラム名が指定されている場合
-                        if let Some(idx) = cols.iter().position(|c| c == &e) {
-                            return Column::new(idx, None, e.as_bytes().to_vec());
-                        }
+        let mut columns: Vec<Column> = Vec::new();
+        for field in fields.split(',') {
+            match Self::parse_field(field) {
+                (Some(start), None, None) => { // 範囲指定なし, デフォルト値なし
+                    let idx = Self::col_to_idx(start, &cols);
+                    columns.push(Column::new(idx, None, cols[idx].as_bytes().to_vec()));
+                }
+                (Some(start), None, Some(default)) => { // 範囲指定なし, デフォルト値あり
+                    columns.push(Column::new(0, Some(default), start.as_bytes().to_vec()));
+                }
+                (Some(start), Some(end), None) => { // 範囲指定あり, デフォルト値なし
+                    let start = Self::col_to_idx(start, &cols);
+                    let end   = Self::col_to_idx(end, &cols);
+                    for idx in start..(end + 1) {
+                        columns.push(Column::new(idx, None, cols[idx].as_bytes().to_vec()));
                     }
                 }
-                panic!("不明なフィールド: {}", e);
-            }).collect();
-        Config::new(first_line, delimiter, field, columns)
+                (Some(start), Some(end), default) => { // 範囲指定あり, デフォルト値あり
+                    let start = Self::col_to_idx(start, &cols);
+                    let end   = Self::col_to_idx(end, &cols);
+                    for idx in start..(end + 1) {
+                        columns.push(Column::new(0, default.clone(), cols[idx].as_bytes().to_vec()));
+                    }
+                }
+                (_,_,_) => panic!("不正な形式のフィールドです: {}", field)
+            }
+        }
+        Config::new(first_line, delimiter, fields, columns)
     }
 
     /// first_lineをヘッダとして出力する
