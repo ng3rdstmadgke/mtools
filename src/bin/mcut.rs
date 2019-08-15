@@ -35,18 +35,16 @@ fn main() {
         // カラム名とindexの対応表を作成
         if let Some(fields) = options.get("-f") {
             // -f オプション: ヘッダを考慮しない
-            let fmap = mcut::fmap_from_col_number(&line, delimiter, fields.clone());
-            let cfg = mcut::Config::new(delimiter, fmap);
+            let cfg = mcut::Config::parse_field_as_number(line.clone(), delimiter, fields.clone());
             // 1行目を出力する
-            mcut::mcut_line(line.as_bytes(), &mut writer, &cfg);
+            cfg.write_first_line(&mut writer);
             mcut::mcut(&mut reader, &mut writer, cfg);
         } else if let Some(fields) = options.get("-F") {
             // -F オプション: ヘッダを考慮する
-            let fmap = mcut::fmap_from_col_name(&line, delimiter, fields.clone());
-            let cfg = mcut::Config::new(delimiter, fmap);
+            let cfg = mcut::Config::parse_field_as_name(line.clone(), delimiter, fields.clone());
             if let None = options.get("--no-header") {
                 // --no-headerオプションが指定されていなければ1行目を出力する
-                mcut::write_header(&mut writer, &cfg);
+                cfg.write_header(&mut writer);
             }
             mcut::mcut(&mut reader, &mut writer, cfg);
         } else {
